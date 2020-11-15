@@ -17,7 +17,7 @@ def main():
     stock_diff_wk = []
     count = -1
     #add Dawna's annotations to the array
-    with open('kaggle_stocks.csv', encoding="utf8") as csvfile:
+    with open('data/kaggle_stocks.csv', encoding="utf8") as csvfile:
         csvreader = csv.reader(csvfile )
         for row in csvreader:
             #text=0, timestamp=1, symbols=2
