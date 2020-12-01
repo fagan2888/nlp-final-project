@@ -1,0 +1,3 @@
+[style]
+blank_lines_around_top_level_definition = 1
+column_limit = 150
