@@ -1,3 +1,4 @@
+from collections import namedtuple
 from datetime import date, timedelta
 import os
 import re
@@ -16,6 +17,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 COMBINED_OUTPUT_PATH = os.path.join(os.path.dirname(__file__), 'data', 'tweets.csv')
 
+TweetMetrics = namedtuple('TweetMetrics', ['replies', 'retweets', 'likes'])
+
 def get_output_path(company, date_):
     return os.path.join(os.path.dirname(__file__), 'data', f'tweets_{company}_{date_.strftime("%Y-%m-%d")}.csv')
 
@@ -29,10 +32,30 @@ def wait_for_xpath(driver, xpath, timeout=10):
 def ensure_focused(driver):
     driver.switch_to.window(driver.current_window_handle)
 
+def parse_metrics(metrics_div):
+    replies, retweets, likes = 0, 0, 0
+
+    parts = metrics_div.get_attribute('aria-label').split(', ')
+    assert len(parts) <= 3
+    for part in parts:
+        if part == '':
+            continue
+        num, category = part.split(' ')
+        if category in ('replies', 'reply'):
+            replies = num
+        elif category in ('Retweets', 'Retweet'):
+            retweets = num
+        elif category in ('likes', 'like'):
+            likes = num
+        else:
+            assert False
+    
+    return TweetMetrics(replies=replies, retweets=retweets, likes=likes)
+
 def gather_tweets_for_date(driver, company, date_, limit):
     since = date_.strftime('%Y-%m-%d')
     until = (date_ + timedelta(days=1)).strftime('%Y-%m-%d')
-    query = f'${company} since:{since} until:{until}'
+    query = f'${company} since:{since} until:{until} -filter:replies -filter:nativeretweets' # Exclude replies and retweets
     
     print(f"gathering tweets for {company} on {date_.strftime('%Y-%m-%d')}")
 
@@ -73,31 +96,33 @@ def gather_tweets_for_date(driver, company, date_, limit):
         retrying_after_err = False
 
         try:
-            tweet_divs = driver.find_elements_by_xpath('/html/body/div/div/div/div[2]/main/div/div/div/div/div/div[2]/div/div/section/div/div//div[@lang="en"]')
-            # TODO: It's also possible to get the number of likes, retweets, and comments by looking at the aria-label attribute,
-            # but for now we're not actually using that data / we can't really pair those up directly with tweet_divs, since we
-            # also look at tweets that were retweeted.
+            tweet_divs = driver.find_elements_by_xpath('/html/body/div/div/div/div[2]/main/div/div/div/div/div/div[2]/div/div/section/div/div/div/div/div/article/div/div/div/div[2]/div[2]/div[2]/div/div[@lang="en"]')
+            metrics_divs = [tweet_div.find_element_by_xpath('./../../div[@aria-label]') for tweet_div in tweet_divs]
+
             if len(tweet_divs) == 0:
                 break
 
             num_processed = 0
-            for tweet_div in tweet_divs:
+            for tweet_div, metrics_div in zip(tweet_divs, metrics_divs):
                 tweet = tweet_div.text
                 tweet = tweet.replace('\n', ' ').replace('\r', '')
                 if '…' in tweet:
                     # We're not getting the full tweet
                     continue
-                if tweet in results:
+                if any([t == tweet for t, _ in results]):
                     # We've already seen this tweet before
                     continue
-                matches = re.findall(r'(?:^|\s)(\$[A-Za-z]+?)\b', tweet)
+                matches = re.findall(r'(?:^|\s)(\$[A-Za-z]+?)\b', tweet) # Search for all cashtags
                 if len(matches) != 1 or matches[0].lower() != company_tag.lower():
-                    # Multiple companies are tagged, ads, "@AMD", a retweet / something that was retweeted, etc.
+                    # Multiple companies are tagged, ads, tweets with "@AMD" are included when you search for "$AMD", etc.
                     continue
+
+                metrics = parse_metrics(metrics_div)
 
                 print('=' * 10)
                 print(tweet)
-                results.append(tweet)
+                print(f"{metrics.replies} replies, {metrics.retweets} retweets, {metrics.likes} likes")
+                results.append((tweet, metrics))
 
                 num_processed += 1
                 total_num_processed += 1
@@ -150,8 +175,15 @@ def main():
             else:
                 results_for_date = []
                 tweets = gather_tweets_for_date(driver, company, date_, limit=limit_per_day)
-                for tweet in tweets:
-                    results_for_date.append({'company': company, 'date': date_, 'tweet': tweet})
+                for tweet, (replies, retweets, likes) in tweets:
+                    results_for_date.append({
+                        'company': company,
+                        'date': date_,
+                        'text': tweet,
+                        'num_replies': replies,
+                        'num_retweets': retweets,
+                        'num_likes': likes
+                    })
                 results_for_date = pd.DataFrame(results_for_date)
                 results_for_date.to_csv(output_path, date_format='%Y-%m-%d', index=False)
             results = pd.concat([results, results_for_date], axis=0)
