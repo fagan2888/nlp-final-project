@@ -1,4 +1,5 @@
 import os
+import re
 import string
 import time
 import sys
@@ -22,12 +23,12 @@ def load_xpath(driver, xp, timeout=10):
 
 def main():
     queries = [
+        '$amd since:2020-01-20 until:2020-01-25',
         '$aapl since:2018-01-20 until:2018-01-25',
-        '$msft since:2019-02-12 until:2019-02-20 min_replies:5 min_faves:10 min_retweets:4',
-        '$amd since:2020-01-20 until:2020-01-25'
+        '$msft since:2019-02-12 until:2019-02-20 min_replies:5 min_faves:10 min_retweets:4'
     ]
     results = {query: [] for query in queries}
-    tweet_limit = 25
+    tweet_limit = 20
 
     driver_path = os.getenv('CHROMEDRIVER_PATH')
     driver = webdriver.Chrome(executable_path=driver_path)
@@ -60,30 +61,47 @@ def main():
         # Gather the tweets up to tweet_limit
         load_xpath(driver, '/html/body/div/div/div/div[2]/main/div/div/div/div/div/div[2]/div/div/section/div/div/div[1]/div/div/article/div/div/div/div[2]')
         num_processed = 0
-        while num_processed < tweet_limit:
+        company_tag = query.split(' ')[0]
+        while True:
             if num_processed > 0:
                 driver.execute_script('window.scrollTo(0, document.body.scrollHeight);')
-                time.sleep(3)
+                time.sleep(5)
 
             tweet_divs = driver.find_elements_by_xpath('/html/body/div/div/div/div[2]/main/div/div/div/div/div/div[2]/div/div/section/div/div//div[@lang="en"]')
             if len(tweet_divs) == 0:
-                # No more tweets
+                print('no more tweets found')
+                print()
                 break
-            num_remaining = tweet_limit - num_processed
-            if len(tweet_divs) > num_remaining:
-                tweet_divs = tweet_divs[:num_remaining]
 
             for tweet_div in tweet_divs:
+                #tweet_date = ...
                 tweet = tweet_div.text
                 tweet = tweet.replace('\n', ' ').replace('\r', '')
+                if '…' in tweet:
+                    # We're not getting the full tweet
+                    continue
+                if tweet in results[query]:
+                    # We've already seen this tweet before
+                    continue
+                matches = re.findall(r'(?:^|\s)(\$[A-Za-z]+?)\b', tweet)
+                if len(matches) != 1 or matches[0].lower() != company_tag.lower():
+                    # Multiple companies are tagged, "@AMD", a retweet / something that was retweeted, etc.
+                    continue
+
                 print('=' * 10)
                 print(tweet)
                 results[query].append(tweet)
 
+                num_processed += 1
+                if num_processed == tweet_limit:
+                    break
+
             print('=' * 10)
-            print(f'processed {len(tweet_divs)} tweets')
+            print(f'processed {num_processed} tweets, {tweet_limit - num_processed} remaining')
             print()
-            num_processed += len(tweet_divs)
+
+            if num_processed == tweet_limit:
+                break
 
     for query, tweets in results.items():
         print(f"gathered {len(tweets)} tweets for '{query}'")
