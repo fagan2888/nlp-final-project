@@ -30,7 +30,13 @@ def wait_for_xpath(driver, xpath, timeout=10):
         sys.exit(1)
 
 def ensure_focused(driver):
+    # This takes too long, just don't click anything on anything else while the program is running.
+    '''
+    driver.minimize_window()
+    driver.maximize_window()
     driver.switch_to.window(driver.current_window_handle)
+    '''
+    pass
 
 def parse_metrics(metrics_div):
     replies, retweets, likes = 0, 0, 0
