@@ -74,6 +74,9 @@ def gather_tweets_for_date(driver, company, date_, limit):
 
         try:
             tweet_divs = driver.find_elements_by_xpath('/html/body/div/div/div/div[2]/main/div/div/div/div/div/div[2]/div/div/section/div/div//div[@lang="en"]')
+            # TODO: It's also possible to get the number of likes, retweets, and comments by looking at the aria-label attribute,
+            # but for now we're not actually using that data / we can't really pair those up directly with tweet_divs, since we
+            # also look at tweets that were retweeted.
             if len(tweet_divs) == 0:
                 break
 
