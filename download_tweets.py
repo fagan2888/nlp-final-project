@@ -75,6 +75,7 @@ def main():
 
             for tweet_div in tweet_divs:
                 tweet = tweet_div.text
+                tweet = tweet.replace('\n', ' ').replace('\r', '')
                 print('=' * 10)
                 print(tweet)
                 results[query].append(tweet)
