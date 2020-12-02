@@ -1,5 +1,6 @@
 from collections import namedtuple
 from datetime import date, timedelta
+import glob
 import os
 import re
 import string
@@ -15,12 +16,16 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-COMBINED_OUTPUT_PATH = os.path.join(os.path.dirname(__file__), 'data', 'tweets.csv')
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+COMBINED_OUTPUT_PATH = os.path.join(DATA_DIR, 'tweets.csv')
 
 TweetMetrics = namedtuple('TweetMetrics', ['replies', 'retweets', 'likes'])
 
 def get_output_path(company, date_):
-    return os.path.join(os.path.dirname(__file__), 'data', f'tweets_{company}_{date_.strftime("%Y-%m-%d")}.csv')
+    return os.path.join(DATA_DIR, f'tweets_{company}_{date_.strftime("%Y-%m-%d")}.csv')
+
+def get_output_paths():
+    return glob.glob(os.path.join(DATA_DIR, 'tweets_*.csv'))
 
 def wait_for_xpath(driver, xpath, timeout=10):
     try:
@@ -155,7 +160,7 @@ def gather_tweets_for_date(driver, company, date_, limit):
             retrying_after_err = True
             continue
     
-    print(f"finished gathering tweets for {company} on {date_.strftime('%Y-%m-%d')}")
+    print(f"finished gathering {len(results)} tweets for {company} on {date_.strftime('%Y-%m-%d')}")
     print()
     return results
 
@@ -168,35 +173,40 @@ def main():
     driver_path = os.getenv('CHROMEDRIVER_PATH')
     driver = webdriver.Chrome(executable_path=driver_path)
 
-    results = pd.DataFrame()
     for company in companies:
+        num_tweets_for_company = 0
+        
         for date_ in pd.date_range(start_date, end_date):
             output_path = get_output_path(company, date_)
             if os.path.isfile(output_path):
                 print(f"results for {company} on {date_.strftime('%Y-%m-%d')} already exist, skipping")
-                try:
-                    results_for_date = pd.read_csv(output_path)
-                except EmptyDataError:
-                    results_for_date = pd.DataFrame()
-            else:
-                results_for_date = []
-                tweets = gather_tweets_for_date(driver, company, date_, limit=limit_per_day)
-                for tweet, (replies, retweets, likes) in tweets:
-                    results_for_date.append({
-                        'company': company,
-                        'date': date_,
-                        'text': tweet,
-                        'num_replies': replies,
-                        'num_retweets': retweets,
-                        'num_likes': likes
-                    })
-                results_for_date = pd.DataFrame(results_for_date)
-                results_for_date.to_csv(output_path, date_format='%Y-%m-%d', index=False)
-            results = pd.concat([results, results_for_date], axis=0)
-        
-        num_tweets = sum(results['company'] == company)
-        print(f"gathered {num_tweets} tweets total for {company}")
+                continue
 
+            results_for_date = []
+            tweets = gather_tweets_for_date(driver, company, date_, limit=limit_per_day)
+            num_tweets_for_company += len(tweets)
+            for tweet, (replies, retweets, likes) in tweets:
+                results_for_date.append({
+                    'company': company,
+                    'date': date_,
+                    'text': tweet,
+                    'num_replies': replies,
+                    'num_retweets': retweets,
+                    'num_likes': likes
+                })
+            results_for_date = pd.DataFrame(results_for_date)
+            results_for_date.to_csv(output_path, date_format='%Y-%m-%d', index=False)
+        
+        print(f"gathered {num_tweets_for_company} tweets total for {company}")
+
+    # Combine all of the results into a single CSV file
+    results = pd.DataFrame()
+    for fname in get_output_paths():
+        try:
+            results_for_date = pd.read_csv(fname)
+        except EmptyDataError:
+            results_for_date = pd.DataFrame()
+        results = pd.concat([results, results_for_date], axis=0)
     results.to_csv(COMBINED_OUTPUT_PATH, date_format='%Y-%m-%d', index=False)
 
 if __name__ == '__main__':
