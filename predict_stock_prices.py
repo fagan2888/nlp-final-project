@@ -9,15 +9,15 @@ from torch import nn
 from torch.utils.data import DataLoader, random_split
 
 from dataset import StockPriceDataset
-from model import StockPriceModel
+from model import MSLELoss, StockPriceModel
 
 def train(model, train_loader, criterion, optimizer, epoch):
     losses = []
-    for i, (tweet_data, open, close) in enumerate(train_loader):
-        tweet_data, open, close = tweet_data.float(), open.float(), close.float()
+    for i, (tweet_data, open, diff) in enumerate(train_loader):
+        tweet_data, open, diff = tweet_data.float(), open.float(), diff.float()
         optimizer.zero_grad()
-        close_pred = model(tweet_data, open)
-        loss = criterion(close_pred, close)
+        diff_pred = model(tweet_data, open)
+        loss = criterion(diff_pred, diff)
         loss.backward()
         optimizer.step()
 
@@ -32,12 +32,12 @@ def test(model, test_loader, criterion):
     preds = []
     losses = []
     with torch.no_grad():
-        for tweet_data, open, close in test_loader:
-            tweet_data, open, close = tweet_data.float(), open.float(), close.float()
-            close_pred = model(tweet_data, open)
-            loss = criterion(close_pred, close)
+        for tweet_data, open, diff in test_loader:
+            tweet_data, open, diff = tweet_data.float(), open.float(), diff.float()
+            diff_pred = model(tweet_data, open)
+            loss = criterion(diff_pred, diff)
 
-            preds.append(close_pred.item())
+            preds.append(diff_pred.item())
             losses.append(loss.item())
 
     return preds, np.mean(losses)
@@ -65,7 +65,7 @@ def main():
     test_loader = DataLoader(test_dataset, batch_size=None)
 
     model = StockPriceModel()
-    criterion = nn.MSELoss()
+    criterion = MSLELoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     for epoch in range(num_epochs):
@@ -78,11 +78,11 @@ def main():
     
     # TODO: load the best model?
     test_preds, test_loss = test(model, test_loader, criterion)
-    test_opens, test_closes = zip(*[(open.item(), close.item()) for _, open, close in test_loader])
+    test_opens, test_diffs = zip(*[(open.item(), diff.item()) for _, open, diff in test_loader])
     print(f"test loss: {test_loss}")
     print("sample predictions/labels:")
-    for pred, open, close in list(zip(test_preds, test_opens, test_closes))[:10]:
-        print(f"predicted {pred} actual {close} (open {open})")
+    for pred, open, diff in list(zip(test_preds, test_opens, test_diffs))[:10]:
+        print(f"predicted {pred} actual {diff} (open {open})")
     print()
     #print_metrics()
 

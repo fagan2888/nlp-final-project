@@ -33,9 +33,7 @@ class StockPriceDataset(Dataset):
                 # TODO: should we include the date if window_size > 1?
                 tweet_rows = np.asarray(tweet_rows[self.tweet_features])
 
-                # We use log to play nice with MSE-- being 20% off is penalized the same whether the label is $100 or $1000.
-                # Not using log was also causing the gradients to blow up and the GRU to output all NaNs.
-                instance = (tweet_rows, np.log1p(open), np.log1p(close))
+                instance = (tweet_rows, open, close - open)
                 self.instances.append(instance)
 
     def __len__(self):
