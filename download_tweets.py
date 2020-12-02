@@ -164,7 +164,22 @@ def gather_tweets_for_date(driver, company, date_, limit):
     print()
     return results
 
+def combine_tweets():
+    # Combine all of the results into a single CSV file
+    results = pd.DataFrame()
+    for fname in get_output_paths():
+        try:
+            results_for_date = pd.read_csv(fname)
+        except EmptyDataError:
+            results_for_date = pd.DataFrame()
+        results = pd.concat([results, results_for_date], axis=0)
+    results.to_csv(COMBINED_OUTPUT_PATH, date_format='%Y-%m-%d', index=False)
+
 def main():
+    if sys.argv[1] == '--combine':
+        combine_tweets()
+        sys.exit(0)
+
     companies = ['AMD', 'AAPL', 'MSFT']
     start_date = date(2019, 9, 29) # inclusive
     end_date = date(2020, 2, 15) # inclusive
@@ -175,7 +190,7 @@ def main():
 
     for company in companies:
         num_tweets_for_company = 0
-        
+
         for date_ in pd.date_range(start_date, end_date):
             output_path = get_output_path(company, date_)
             if os.path.isfile(output_path):
@@ -198,16 +213,6 @@ def main():
             results_for_date.to_csv(output_path, date_format='%Y-%m-%d', index=False)
         
         print(f"gathered {num_tweets_for_company} tweets total for {company}")
-
-    # Combine all of the results into a single CSV file
-    results = pd.DataFrame()
-    for fname in get_output_paths():
-        try:
-            results_for_date = pd.read_csv(fname)
-        except EmptyDataError:
-            results_for_date = pd.DataFrame()
-        results = pd.concat([results, results_for_date], axis=0)
-    results.to_csv(COMBINED_OUTPUT_PATH, date_format='%Y-%m-%d', index=False)
 
 if __name__ == '__main__':
     main()
