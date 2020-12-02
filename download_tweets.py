@@ -102,7 +102,7 @@ def gather_tweets_for_date(driver, company, date_, limit):
         ensure_focused(driver)
         if not first_iteration and not retrying_after_err:
             driver.execute_script('window.scrollBy(0, window.innerHeight);')
-            time.sleep(0.25)
+            time.sleep(0.2)
         first_iteration = False
         retrying_after_err = False
 

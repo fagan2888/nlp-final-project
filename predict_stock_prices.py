@@ -2,6 +2,7 @@ from datetime import date, timedelta
 
 import numpy as np
 import pandas as pd
+from sklearn import metrics
 from sklearn.model_selection import train_test_split
 import torch
 from torch import optim
@@ -9,15 +10,17 @@ from torch import nn
 from torch.utils.data import DataLoader, random_split
 
 from dataset import StockPriceDataset
-from model import MAPELoss, StockPriceModel
+from model import MAPELoss, StockPriceClassifier, StockPriceRegressor
 
-def train(model, train_loader, criterion, optimizer, epoch):
+def train(model, train_loader, criterion, optimizer, epoch, clf):
     losses = []
-    for i, (tweet_data, open, diff) in enumerate(train_loader):
-        tweet_data, open, diff = tweet_data.float(), open.float(), diff.float()
+    for i, (tweet_data, open, label) in enumerate(train_loader):
+        tweet_data, open, label = tweet_data.float(), open.float(), label.float()
+        if clf:
+            label = (label > 0).float()
         optimizer.zero_grad()
-        diff_pred = model(tweet_data, open)
-        loss = criterion(diff_pred, diff)
+        pred = model(tweet_data, open)
+        loss = criterion(pred, label)
         loss.backward()
         optimizer.step()
 
@@ -28,16 +31,18 @@ def train(model, train_loader, criterion, optimizer, epoch):
 
     return np.mean(losses)
 
-def test(model, test_loader, criterion):
+def test(model, test_loader, criterion, clf):
     preds = []
     losses = []
     with torch.no_grad():
-        for tweet_data, open, diff in test_loader:
-            tweet_data, open, diff = tweet_data.float(), open.float(), diff.float()
-            diff_pred = model(tweet_data, open)
-            loss = criterion(diff_pred, diff)
+        for tweet_data, open, label in test_loader:
+            tweet_data, open, label = tweet_data.float(), open.float(), label.float()
+            if clf:
+                label = (label > 0).float()
+            pred = model(tweet_data, open)
+            loss = criterion(pred, label)
 
-            preds.append(diff_pred.item())
+            preds.append(pred.item())
             losses.append(loss.item())
 
     return preds, np.mean(losses)
@@ -50,7 +55,7 @@ def main():
     tweet_data = pd.read_csv('data/tweets_anno_vader.csv', parse_dates=['date'])
     stock_data = pd.read_csv('data/stocks.csv', parse_dates=['date'])
 
-    num_epochs = 30
+    num_epochs = 10
     learning_rate = 1e-3
     weight_decay = 1e-3
     model_cfg = dict(
@@ -74,25 +79,50 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=None)
     test_loader = DataLoader(test_dataset, batch_size=None)
 
-    model = StockPriceModel(model_cfg)
-    criterion = MAPELoss()
+    # Classification
+    print("classification")
+    model = StockPriceClassifier(model_cfg)
+    criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
     for epoch in range(num_epochs):
-        train_loss = train(model, train_loader, criterion, optimizer, epoch)
+        train_loss = train(model, train_loader, criterion, optimizer, epoch, clf=True)
         print(f"epoch {epoch} final train loss: {train_loss}")
 
-        _, val_loss = test(model, val_loader, criterion)
+        _, val_loss = test(model, val_loader, criterion, clf=True)
         print(f"epoch {epoch} val loss: {val_loss}")
         # TODO: save the best model?
     
     # TODO: load the best model?
-    test_preds, test_loss = test(model, test_loader, criterion)
-    test_opens, test_diffs = zip(*[(open.item(), diff.item()) for _, open, diff in test_loader])
+    test_preds, test_loss = test(model, test_loader, criterion, clf=True)
     print(f"test loss: {test_loss}")
+    test_preds = [(p > 0.5) for p in test_preds]
+    test_labels = [(label.item() > 0) for _, _, label in test_loader]
+    print(metrics.classification_report(test_labels, test_preds))
+
+    print()
+
+    # Regression
+    print("regression")
+    model = StockPriceRegressor(model_cfg)
+    criterion = MAPELoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+
+    for epoch in range(num_epochs):
+        train_loss = train(model, train_loader, criterion, optimizer, epoch, clf=False)
+        print(f"epoch {epoch} final train loss: {train_loss}")
+
+        _, val_loss = test(model, val_loader, criterion, clf=False)
+        print(f"epoch {epoch} val loss: {val_loss}")
+        # TODO: save the best model?
+    
+    # TODO: load the best model?
+    test_preds, test_loss = test(model, test_loader, criterion, clf=False)
+    print(f"test loss: {test_loss}")
+    test_opens, test_labels = zip(*[(open.item(), label.item()) for _, open, label in test_loader])
     print("sample predictions/labels:")
-    for pred, open, diff in list(zip(test_preds, test_opens, test_diffs))[:10]:
-        print(f"predicted {pred} actual {diff} (open {open})")
+    for pred, open, label in list(zip(test_preds, test_opens, test_labels))[:10]:
+        print(f"predicted {pred} actual {label} (open {open})")
 
 if __name__ == '__main__':
     main()

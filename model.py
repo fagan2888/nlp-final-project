@@ -8,12 +8,27 @@ class MAPELoss(nn.Module):
     def forward(self, pred, actual):
         return torch.mean(torch.abs((actual - pred) / actual))
 
-class StockPriceModel(nn.Module):
+class StockPriceClassifier(nn.Module):
     def __init__(self, cfg):
         super().__init__()
-        self.rnn = nn.GRU(cfg.input_size, cfg.gru_hidden_size)
-        self.fc1 = nn.Linear(cfg.gru_hidden_size+1, cfg.fc_hidden_size)
-        self.fc2 = nn.Linear(cfg.fc_hidden_size, 1)
+        self.rnn = nn.GRU(cfg['input_size'], cfg['gru_hidden_size'])
+        self.fc1 = nn.Linear(cfg['gru_hidden_size'], cfg['fc_hidden_size'])
+        self.fc2 = nn.Linear(cfg['fc_hidden_size'], 1)
+    
+    def forward(self, x1, x2=None):
+        x = x1 # Ignore open price
+        _, x = self.rnn(x.unsqueeze(1))
+        x = F.relu(x)
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x).view(()) # as 0-D tensor
+        return x
+
+class StockPriceRegressor(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.rnn = nn.GRU(cfg['input_size'], cfg['gru_hidden_size'])
+        self.fc1 = nn.Linear(cfg['gru_hidden_size']+1, cfg['fc_hidden_size'])
+        self.fc2 = nn.Linear(cfg['fc_hidden_size'], 1)
     
     def forward(self, x1, x2):
         _, x1 = self.rnn(x1.unsqueeze(1))
