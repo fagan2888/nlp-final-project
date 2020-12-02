@@ -44,17 +44,18 @@ def test(model, test_loader, criterion):
 
 def main():
     # For deterministic results
-    np.random.seed(42)
-    torch.manual_seed(42)
+    np.random.seed(0)
+    torch.manual_seed(0)
 
     tweet_data = pd.read_csv('data/tweets_anno_vader.csv', parse_dates=['date'])
     stock_data = pd.read_csv('data/stocks.csv', parse_dates=['date'])
 
-    num_epochs = 10
-    learning_rate = 1e-2
+    num_epochs = 50
+    learning_rate = 3e-4
     weight_decay = 1e-3
+    window_size = 7
 
-    dataset = StockPriceDataset(tweet_data, stock_data)
+    dataset = StockPriceDataset(tweet_data, stock_data, window_size=window_size)
     train_size = int(0.7*len(dataset))
     val_size = int(0.15*len(dataset))
     test_size = len(dataset) - train_size - val_size
@@ -84,8 +85,6 @@ def main():
     print("sample predictions/labels:")
     for pred, open, diff in list(zip(test_preds, test_opens, test_diffs))[:10]:
         print(f"predicted {pred} actual {diff} (open {open})")
-    print()
-    #print_metrics()
 
 if __name__ == '__main__':
     main()
