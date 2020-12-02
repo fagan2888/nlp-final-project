@@ -102,7 +102,7 @@ def gather_tweets_for_date(driver, company, date_, limit):
         ensure_focused(driver)
         if not first_iteration and not retrying_after_err:
             driver.execute_script('window.scrollBy(0, window.innerHeight);')
-            time.sleep(1)
+            time.sleep(0.25)
         first_iteration = False
         retrying_after_err = False
 
@@ -176,11 +176,11 @@ def combine_tweets():
     results.to_csv(COMBINED_OUTPUT_PATH, date_format='%Y-%m-%d', index=False)
 
 def main():
-    if sys.argv[1] == '--combine':
+    if len(sys.argv) > 1 and sys.argv[1] == '--combine':
         combine_tweets()
         sys.exit(0)
 
-    companies = ['AMD', 'AAPL', 'MSFT']
+    companies = sorted(['AAPL', 'AMD', 'CHGG', 'ARW', 'UIS', 'XBIT'])
     start_date = date(2019, 9, 29) # inclusive
     end_date = date(2020, 2, 15) # inclusive
     limit_per_day = 100

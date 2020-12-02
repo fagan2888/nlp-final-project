@@ -2,7 +2,7 @@ import pandas as pd
 import yfinance as yf
 
 def main():
-    companies = sorted(['AAPL', 'AMZN', 'CHGG', 'ARW', 'UIS', 'XBIT'])
+    companies = sorted(['AAPL', 'AMD', 'CHGG', 'ARW', 'UIS', 'XBIT'])
     data = yf.download(
         tickers=' '.join(companies),
         start='2019-09-29', # inclusive
