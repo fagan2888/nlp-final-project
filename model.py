@@ -1,17 +1,6 @@
 import torch
 from torch import nn
 
-# Mean-squared logarithmic error ensures that our predictions aren't sensitive to scale
-# (eg. being off by 25% is penalized the same whether the actual price is $100 or $1000)
-class MSLELoss(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.mse = nn.MSELoss()
-        
-    def forward(self, pred, actual):
-        #print(pred.item(), actual.item())
-        return self.mse(torch.log(pred + 1), torch.log(actual + 1))
-
 class StockPriceModel(nn.Module):
     def __init__(self, input_size=4, hidden_size=8):
         super().__init__()

@@ -34,7 +34,8 @@ class StockPriceDataset(Dataset):
                 # TODO: should we include the date if window_size > 1?
                 tweet_rows = np.asarray(tweet_rows[self.tweet_features])
 
-                instance = (tweet_rows, open, close)
+                # We use log to play nice with MSE-- being 20% off is penalized the same whether the label is $100 or $1000.
+                instance = (tweet_rows, np.log1p(open), np.log1p(close))
                 self.instances.append(instance)
 
     def __len__(self):

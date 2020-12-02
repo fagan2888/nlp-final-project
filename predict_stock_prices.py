@@ -8,7 +8,7 @@ from torch import optim
 from torch.utils.data import DataLoader, random_split
 
 from dataset import StockPriceDataset
-from model import MSLELoss, StockPriceModel
+from model import StockPriceModel
 
 def train(model, train_loader, criterion, optimizer, epoch):
     losses = []
@@ -59,7 +59,7 @@ def main():
     test_loader = DataLoader(test_dataset, batch_size=None)
 
     model = StockPriceModel()
-    criterion = MSLELoss()
+    criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     for epoch in range(num_epochs):
