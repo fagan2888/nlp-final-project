@@ -9,13 +9,8 @@ class StockPriceModel(nn.Module):
         self.output = nn.Linear(hidden_size+1, 1)
     
     def forward(self, tweet_data, open):
-        initial_hidden = torch.zeros(1, 1, self.hidden_size)
-        tweet_data = tweet_data[:1]
-        print(tweet_data, initial_hidden)
-        _, final_hidden = self.rnn(tweet_data.unsqueeze(1), initial_hidden)
+        _, final_hidden = self.rnn(tweet_data.unsqueeze(1))
         encoded_tweet_data = final_hidden.view(-1)
         encoded_input = torch.cat((encoded_tweet_data, open.view(1)), 0)
-        print(encoded_input)
         close_pred = self.output(encoded_input)
-        #print(close_pred.item())
-        return close_pred.view(())
+        return close_pred.view(()) # as 0-D tensor

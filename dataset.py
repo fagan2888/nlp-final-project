@@ -20,21 +20,21 @@ class StockPriceDataset(Dataset):
             for date_ in self.dates:
                 stock_rows = stock_data[(stock_data['company'] == company) & (stock_data['date'] == date_)]
                 if stock_rows.empty:
-                    #print(f"no stock data for {company} on {date_.strftime('%Y-%m-%d')}")
+                    # No stock data available
                     continue
                 assert stock_rows.shape[0] == 1
                 stock_row = stock_rows.iloc[0]
                 open, close = stock_row['open'], stock_row['close']
 
                 tweet_rows = tweet_data[(tweet_data['company'] == company) & (date_ >= tweet_data['date']) & ((date_ - tweet_data['date']).dt.days < window_size)]
-                if tweet_rows.empty:
-                    #print(f"no tweet data for {company} on {date_.strftime('%Y-%m-%d')}")
+                if tweet_rows.shape[0] < 10:
+                    # No / insufficient tweet data available
                     continue
-                print(date_.strftime('%Y-%m-%d'), tweet_rows.shape[0])
                 # TODO: should we include the date if window_size > 1?
                 tweet_rows = np.asarray(tweet_rows[self.tweet_features])
 
                 # We use log to play nice with MSE-- being 20% off is penalized the same whether the label is $100 or $1000.
+                # Not using log was also causing the gradients to blow up and the GRU to output all NaNs.
                 instance = (tweet_rows, np.log1p(open), np.log1p(close))
                 self.instances.append(instance)
 
