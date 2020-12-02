@@ -51,7 +51,7 @@ def main():
     stock_data = pd.read_csv('data/stocks.csv', parse_dates=['date'])
 
     num_epochs = 50
-    learning_rate = 3e-4
+    learning_rate = 1e-4
     weight_decay = 1e-3
     window_size = 7
 
