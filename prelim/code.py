@@ -103,30 +103,29 @@ def main():
         if(stock_diff_wk[i] == "NULL" or math.isinf(stock_diff_wk[i]) or math.isnan(stock_diff_wk[i]) or stock_diff_wk[i] > 9999 or stock_diff_wk[i] < -9999):
             problem += 1
         else:
-            deltas.append(stock_diff_wk[i])
+            #negative is 0
+            if(stock_diff_wk[i]<=0):
+                deltas.append(0)
+            #positive is 1
+            elif(stock_diff_wk[i]>0):
+                deltas.append(1)
             sentiments.append(labels[i])
     print(problem)
 
     def errorFunction(actual, predictions):
         sum = 0
         for i in range(0, len(actual)):
-            print("actual: " + str(actual[i]))
-            print("predicted: " + str(predictions[i]))
-            #print("calculated diff: " + str(abs((actual[i] - predictions[i]))))
-            print("total " +  str(abs((actual[i] - predictions[i])/(actual[i]))))
-            if(actual[i] < 0 or actual[i] > 0):
-                sum += abs((actual[i] - predictions[i])/(actual[i]))
-            else:
-                sum += abs((0.001 - predictions[i])/(0.001))
+            if(actual[i] == predictions[i]):
+                sum += 1
         return float(sum/len(actual))
 
     print("Creating sklearn Model")
     import numpy as np
-    from sklearn.linear_model import LinearRegression
-    reg = LinearRegression().fit(sentiments[0:int(len(sentiments)/2)], deltas[0:int(len(sentiments)/2)])
+    from sklearn.linear_model import LogisticRegression
+    reg = LogisticRegression().fit(sentiments[0:int(len(sentiments)/2)], deltas[0:int(len(sentiments)/2)])
     predictions = reg.predict(sentiments[int(len(sentiments)/2): len(sentiments)])
     actuals = deltas[int(len(sentiments)/2): len(sentiments)]
-    print("Percent Error: " + str(errorFunction(actuals, predictions)*100))
+    print("Accuracy: " + str(errorFunction(actuals, predictions)*100))
 
 if __name__ == '__main__':
     main()
