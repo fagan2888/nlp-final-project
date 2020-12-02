@@ -3,4 +3,5 @@ pandas
 scikit-learn
 selenium
 tweepy
+vaderSentiment
 yfinance
