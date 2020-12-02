@@ -1,16 +1,24 @@
 import torch
 from torch import nn
+import torch.nn.functional as F
+
+# Mean absolute percentage error (MAPE) loss isn't scale-sensitive, so we penalize
+# eg. predicting 0.01 for label 1 more harshly than predicting 90 for label 100.
+class MAPELoss(nn.Module):
+    def forward(self, pred, actual):
+        return torch.mean(torch.abs((actual - pred) / actual))
 
 class StockPriceModel(nn.Module):
-    def __init__(self, input_size=4, hidden_size=8):
+    def __init__(self, cfg):
         super().__init__()
-        self.hidden_size = hidden_size
-        self.rnn = nn.GRU(4, hidden_size)
-        self.output = nn.Linear(hidden_size+1, 1)
+        self.rnn = nn.GRU(cfg.input_size, cfg.gru_hidden_size)
+        self.fc1 = nn.Linear(cfg.gru_hidden_size+1, cfg.fc_hidden_size)
+        self.fc2 = nn.Linear(cfg.fc_hidden_size, 1)
     
-    def forward(self, tweet_data, open):
-        _, final_hidden = self.rnn(tweet_data.unsqueeze(1))
-        encoded_tweet_data = final_hidden.view(-1)
-        encoded_input = torch.cat((encoded_tweet_data, open.view(1)), 0)
-        close_pred = self.output(encoded_input)
-        return close_pred.view(()) # as 0-D tensor
+    def forward(self, x1, x2):
+        _, x1 = self.rnn(x1.unsqueeze(1))
+        x1 = F.relu(x1)
+        x = torch.cat((x1.view(-1), x2.view(1)), 0)
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x).view(()) # as 0-D tensor
+        return x
