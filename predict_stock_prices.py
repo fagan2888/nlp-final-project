@@ -50,14 +50,22 @@ def main():
     tweet_data = pd.read_csv('data/tweets_anno_vader.csv', parse_dates=['date'])
     stock_data = pd.read_csv('data/stocks.csv', parse_dates=['date'])
 
-    num_epochs = 50
-    learning_rate = 1e-4
+    num_epochs = 30
+    learning_rate = 1e-3
     weight_decay = 1e-3
-    window_size = 7
+    model_cfg = dict(
+        input_size=4,
+        gru_hidden_size=8,
+        fc_hidden_size=4
+    )
+    window_size = 3
+    min_tweets_per_instance = 10
+    train_ratio = 0.7
+    val_ratio = 0.15
 
-    dataset = StockPriceDataset(tweet_data, stock_data, window_size=window_size)
-    train_size = int(0.7*len(dataset))
-    val_size = int(0.15*len(dataset))
+    dataset = StockPriceDataset(tweet_data, stock_data, window_size=window_size, min_tweets_per_instance=min_tweets_per_instance)
+    train_size = int(train_ratio*len(dataset))
+    val_size = int(val_ratio*len(dataset))
     test_size = len(dataset) - train_size - val_size
     print(f"{len(dataset)} instances, making train/val/test split of {train_size}/{val_size}/{test_size}")
     train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
@@ -66,7 +74,7 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=None)
     test_loader = DataLoader(test_dataset, batch_size=None)
 
-    model = StockPriceModel()
+    model = StockPriceModel(model_cfg)
     criterion = MAPELoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
