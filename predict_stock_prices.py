@@ -51,7 +51,8 @@ def main():
     stock_data = pd.read_csv('data/stocks.csv', parse_dates=['date'])
 
     num_epochs = 10
-    learning_rate = 0.01
+    learning_rate = 1e-2
+    weight_decay = 1e-3
 
     dataset = StockPriceDataset(tweet_data, stock_data)
     train_size = int(0.7*len(dataset))
@@ -66,7 +67,7 @@ def main():
 
     model = StockPriceModel()
     criterion = MAPELoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
     for epoch in range(num_epochs):
         train_loss = train(model, train_loader, criterion, optimizer, epoch)
