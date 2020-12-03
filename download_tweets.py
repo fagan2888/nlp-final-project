@@ -10,7 +10,7 @@ import sys
 import pandas as pd
 from pandas.io.common import EmptyDataError
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
+from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
@@ -28,11 +28,7 @@ def get_output_paths():
     return glob.glob(os.path.join(DATA_DIR, 'tweets_*.csv'))
 
 def wait_for_xpath(driver, xpath, timeout=10):
-    try:
-        WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.XPATH, xpath)))
-    except (TimeoutError, NoSuchElementException) as err:
-        print(err)
-        sys.exit(1)
+    WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.XPATH, xpath)))
 
 def ensure_focused(driver):
     # This takes too long, just don't click anything on anything else while the program is running.
@@ -88,7 +84,15 @@ def gather_tweets_for_date(driver, company, date_, limit):
     driver.find_element_by_xpath('/html/body/div/div/div/div[2]/main/div/div/div/div[1]/div/div[1]/div[2]/nav/div/div[2]/div/div[2]/a').click()
 
     # Gather the tweets up to `limit`
-    wait_for_xpath(driver, '/html/body/div/div/div/div[2]/main/div/div/div/div/div/div[2]/div/div/section/div/div/div[1]/div/div/article/div/div/div/div[2]')
+    try:
+        wait_for_xpath(driver, '/html/body/div/div/div/div[2]/main/div/div/div/div/div/div[2]/div/div/section/div/div/div[1]/div/div/article/div/div/div/div[2]')
+    except TimeoutException as err:
+        if 'No results for ' in driver.page_source:
+            return []
+
+        # Hope for the best and retry
+        print(err)
+        return gather_tweets_for_date(driver, company, date_, limit)
 
     total_num_processed = 0
     num_fails = 0
