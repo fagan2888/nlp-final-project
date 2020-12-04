@@ -10,7 +10,7 @@ from torch import nn
 from torch.utils.data import DataLoader, random_split
 
 from dataset import StockPriceDataset
-from model import MAPELoss, StockPriceClassifier, StockPriceRegressor
+from model import StockPriceRegressor
 
 def train(model, train_loader, criterion, optimizer, epoch, clf):
     losses = []
@@ -26,8 +26,9 @@ def train(model, train_loader, criterion, optimizer, epoch, clf):
 
         losses.append(loss.item())
 
-        if i % 10 == 0:
+        if i % 50 == 0:
             print(f"\tepoch {epoch} inst {i} train loss: {np.mean(losses)}")
+            print(pred.item(), label.item())
 
     return np.mean(losses)
 
@@ -60,11 +61,10 @@ def main():
     weight_decay = 1e-3
     model_cfg = dict(
         input_size=4,
-        gru_hidden_size=8,
-        fc_hidden_size=4
+        hidden_size=16
     )
     window_size = 3
-    min_tweets_per_instance = 10
+    min_tweets_per_instance = 1
     train_ratio = 0.7
     val_ratio = 0.15
 
@@ -75,10 +75,11 @@ def main():
     print(f"{len(dataset)} instances, making train/val/test split of {train_size}/{val_size}/{test_size}")
     train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
 
-    train_loader = DataLoader(train_dataset, batch_size=None)
+    train_loader = DataLoader(train_dataset, batch_size=None, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=None)
     test_loader = DataLoader(test_dataset, batch_size=None)
 
+    '''
     # Classification
     print("classification")
     model = StockPriceClassifier(model_cfg)
@@ -101,11 +102,12 @@ def main():
     print(metrics.classification_report(test_labels, test_preds))
 
     print()
+    '''
 
     # Regression
     print("regression")
     model = StockPriceRegressor(model_cfg)
-    criterion = MAPELoss()
+    criterion = nn.L1Loss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
     for epoch in range(num_epochs):
