@@ -16,3 +16,15 @@ class StockPriceRegressor(nn.Module):
         outputs = F.relu(outputs)
         weights = self.hidden2weight(outputs)
         return torch.sum(weights, dim=0).view(())
+
+class StockPriceClassifier(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.rnn = nn.GRU(cfg['input_size'], cfg['hidden_size'])
+        self.hidden2weight = nn.Linear(cfg['hidden_size'], 1)
+    
+    def forward(self, x1, x2=None): # Ignore open price
+        outputs, _ = self.rnn(x1.unsqueeze(1))
+        outputs = F.relu(outputs)
+        weights = self.hidden2weight(outputs)
+        return torch.sum(weights, dim=0).view(())
