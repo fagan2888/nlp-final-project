@@ -9,11 +9,11 @@ class StockPriceDataset(Dataset):
 
         self.companies = sorted(set(stock_data['company']))
         self.dates = sorted(set(stock_data['date']))
-        self.tweet_features = ['num_replies', 'num_retweets', 'num_likes', 'pos', 'neg', 'neu']
+        self.tweet_features = ['num_replies', 'num_retweets', 'num_likes', 'pos', 'neg']
         self.instances = []
 
-        # Standardize the tweet data
-        tweet_data[self.tweet_features] = StandardScaler().fit_transform(tweet_data[self.tweet_features])
+        # Remove neutral tweets
+        tweet_data = tweet_data[np.abs(tweet_data['compound']) >= 0.05]
 
         # Populate `instances`
         for company in self.companies:

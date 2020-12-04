@@ -16,6 +16,8 @@ from dataset import StockPriceDataset
 from model import StockPriceClassifier, StockPriceRegressor
 
 def train(model, train_loader, criterion, optimizer, epoch, clf):
+    model.train()
+
     losses = []
     for i, (tweet_data, open, label) in tqdm(enumerate(train_loader), total=len(train_loader)):
         tweet_data, open, label = tweet_data.float(), open.float(), label.float()
@@ -32,6 +34,8 @@ def train(model, train_loader, criterion, optimizer, epoch, clf):
     return np.mean(losses)
 
 def test(model, test_loader, criterion, clf):
+    model.eval()
+
     preds = []
     losses = []
     with torch.no_grad():
@@ -46,6 +50,15 @@ def test(model, test_loader, criterion, clf):
             losses.append(loss.item())
 
     return preds, np.mean(losses)
+
+def save_model(model, epoch, mode):
+    os.makedirs('checkpoints', exist_ok=True)
+    torch.save(model.state_dict(), f'checkpoints/{mode}_epoch_{epoch}.pt')
+
+def load_best_model(model, val_losses, mode):
+    epoch = np.argmin(val_losses)
+    model.load_state_dict(torch.load(f'checkpoints/{mode}_epoch_{epoch}.pt'))
+    return epoch, val_losses[epoch]
 
 def plot_losses(train_losses, val_losses, mode):
     os.makedirs('figures', exist_ok=True)
@@ -80,8 +93,9 @@ def main():
     learning_rate = 1e-3
     weight_decay = 1e-3
     model_cfg = dict(
-        input_size=6,
-        hidden_size=16
+        input_size=5,
+        gru_hidden_size=16,
+        gru_num_layers=2
     )
 
     # Data setup
@@ -110,14 +124,15 @@ def main():
 
         _, val_loss = test(model, val_loader, criterion, clf=True)
         print(f"epoch {epoch} val loss: {val_loss}")
-        # TODO: save the best model?
 
+        save_model(model, epoch, mode='clf')
         train_losses.append(train_loss)
         val_losses.append(val_loss)
 
     plot_losses(train_losses, val_losses, mode='clf')
     
-    # TODO: load the best model?
+    best_epoch, best_val_loss = load_best_model(model, val_losses, mode='clf')
+    print(f"best epoch was {best_epoch} with val loss {best_val_loss}")
     test_preds, test_loss = test(model, test_loader, criterion, clf=True)
     print(f"test loss: {test_loss}")
     test_preds = [(p > 0) for p in test_preds]
@@ -139,14 +154,15 @@ def main():
 
         _, val_loss = test(model, val_loader, criterion, clf=False)
         print(f"epoch {epoch} val loss: {val_loss}")
-        # TODO: save the best model?
 
+        save_model(model, epoch, mode='reg')
         train_losses.append(train_loss)
         val_losses.append(val_loss)
     
     plot_losses(train_losses, val_losses, mode='reg')
 
-    # TODO: load the best model?
+    best_epoch, best_val_loss = load_best_model(model, val_losses, mode='reg')
+    print(f"best epoch was {best_epoch} with val loss {best_val_loss}")
     test_preds, test_loss = test(model, test_loader, criterion, clf=False)
     print(f"test loss: {test_loss}")
     test_opens, test_labels = zip(*[(open.item(), label.item()) for _, open, label in test_loader])

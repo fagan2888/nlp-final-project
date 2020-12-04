@@ -5,8 +5,8 @@ import torch.nn.functional as F
 class StockPriceRegressor(nn.Module):
     def __init__(self, cfg):
         super().__init__()
-        self.rnn = nn.GRU(cfg['input_size']+1, cfg['hidden_size'])
-        self.hidden2weight = nn.Linear(cfg['hidden_size'], 1)
+        self.rnn = nn.GRU(cfg['input_size']+1, cfg['gru_hidden_size'], cfg['gru_num_layers'])
+        self.hidden2weight = nn.Linear(cfg['gru_hidden_size'], 1)
     
     # x1 = sequence of tweet data, x2 = open price
     def forward(self, x1, x2):
@@ -20,8 +20,8 @@ class StockPriceRegressor(nn.Module):
 class StockPriceClassifier(nn.Module):
     def __init__(self, cfg):
         super().__init__()
-        self.rnn = nn.GRU(cfg['input_size'], cfg['hidden_size'])
-        self.hidden2weight = nn.Linear(cfg['hidden_size'], 1)
+        self.rnn = nn.GRU(cfg['input_size'], cfg['gru_hidden_size'], cfg['gru_num_layers'])
+        self.hidden2weight = nn.Linear(cfg['gru_hidden_size'], 1)
     
     def forward(self, x1, x2=None): # Ignore open price
         outputs, _ = self.rnn(x1.unsqueeze(1))
