@@ -64,13 +64,15 @@ def plot_losses(train_losses, val_losses, mode):
     os.makedirs('figures', exist_ok=True)
 
     plt.xlabel('epoch')
-    plt.ylabel('training loss')    
+    plt.ylabel('training loss')
+    plt.ylim(0, max(train_losses + [2]))
     plt.plot(range(len(train_losses)), train_losses)
     plt.savefig(f'figures/{mode}_train_loss.png')
     plt.clf()
 
     plt.xlabel('epoch')
-    plt.ylabel('validation loss')    
+    plt.ylabel('validation loss')
+    plt.ylim(0, max(val_losses + [2]))
     plt.plot(range(len(val_losses)), val_losses)
     plt.savefig(f'figures/{mode}_val_loss.png')
     plt.clf()
