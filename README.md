@@ -1,4 +1,4 @@
-# Predicting Stock Market Movement via Financial Tweet Sentiments
+# Predicting Stock Market Movement with Financial Tweet Data
 
 James Ko, Nicholas Szczepura, Yefim Shneyderman
 
